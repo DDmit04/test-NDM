@@ -14,7 +14,7 @@ type Queue struct {
 	stack    []string
 	msgChan  chan string
 	waitChan chan interface{}
-	lock     sync.Mutex
+	lock     sync.RWMutex
 }
 
 func NewQueue() *Queue {
@@ -22,11 +22,13 @@ func NewQueue() *Queue {
 		msgChan:  make(chan string),
 		waitChan: make(chan interface{}),
 		stack:    make([]string, 0),
-		lock:     sync.Mutex{},
+		lock:     sync.RWMutex{},
 	}
 }
 
 func (q *Queue) Count() int {
+	q.lock.RLock()
+	defer q.lock.RUnlock()
 	return len(q.stack)
 }
 
@@ -107,10 +109,10 @@ func (m *QueueManager) GetQueue(name string) *Queue {
 }
 
 func (m *QueueManager) CreateQueue(name string) *Queue {
-	queue := m.GetQueue(name)
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	if queue == nil {
+	queue, exists := m.queues[name]
+	if !exists {
 		queue = NewQueue()
 		queue.Run()
 		m.queues[name] = queue
