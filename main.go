@@ -48,8 +48,16 @@ func (q *Queue) Run() {
 	}()
 }
 
-func (q *Queue) GetMessage(ctx context.Context, wait bool) string {
+func (q *Queue) GetMessage(timeout uint64) string {
+	ctx, cancel := context.WithCancel(context.Background())
+	if timeout > 0 {
+		ctx, cancel = context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+	}
+	defer cancel()
 	for {
+		if q.Count() == 0 && timeout == 0 {
+			return ""
+		}
 		select {
 		case <-ctx.Done():
 			return ""
@@ -58,13 +66,7 @@ func (q *Queue) GetMessage(ctx context.Context, wait bool) string {
 			case <-ctx.Done():
 				return ""
 			case msg := <-q.msgChan:
-				if !wait {
-					return msg
-				} else if msg == "" {
-					break
-				} else {
-					return msg
-				}
+				return msg
 			}
 		}
 	}
@@ -143,16 +145,12 @@ func main() {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
-			timeout, err := strconv.Atoi(r.URL.Query().Get("timeout"))
-			if err != nil || timeout < 0 {
+			timeoutStr := r.URL.Query().Get("timeout")
+			timeout, err := strconv.ParseUint(timeoutStr, 10, 0)
+			if err != nil {
 				timeout = 0
 			}
-			ctx, cancel := context.WithCancel(context.Background())
-			if timeout > 0 {
-				ctx, cancel = context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
-			}
-			msg := queue.GetMessage(ctx, timeout > 0)
-			cancel()
+			msg := queue.GetMessage(timeout)
 			if msg == "" {
 				w.WriteHeader(http.StatusNotFound)
 				return
