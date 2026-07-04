@@ -36,6 +36,7 @@ func (q *Queue) Run() {
 	go func() {
 		for {
 			if q.Count() == 0 {
+				time.Sleep(1 * time.Millisecond)
 				continue
 			}
 			select {
