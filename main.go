@@ -15,7 +15,6 @@ type Queue struct {
 	msgChan  chan string
 	waitChan chan interface{}
 	lock     sync.Mutex
-	ctx      context.Context
 }
 
 func NewQueue() *Queue {
@@ -24,7 +23,6 @@ func NewQueue() *Queue {
 		waitChan: make(chan interface{}),
 		stack:    make([]string, 0),
 		lock:     sync.Mutex{},
-		ctx:      context.Background(),
 	}
 }
 
@@ -42,10 +40,6 @@ func (q *Queue) Run() {
 			case q.waitChan <- struct{}{}:
 				nextElem := q.Pop()
 				q.msgChan <- nextElem
-			case <-q.ctx.Done():
-				close(q.msgChan)
-				close(q.waitChan)
-				return
 			}
 		}
 	}()
