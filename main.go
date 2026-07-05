@@ -136,8 +136,8 @@ func GetQueueManager() *QueueManager {
 }
 
 func main() {
+	manager := GetQueueManager()
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		manager := GetQueueManager()
 		qName := r.URL.Path[len("/"):]
 		queue := manager.GetQueue(qName)
 		if r.Method == "GET" {
